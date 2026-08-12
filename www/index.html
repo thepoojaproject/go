@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Telecast</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+#loginScreen{position:fixed;inset:0;background:#cae6cd;display:flex;align-items:center;justify-content:center;z-index:9999;font-family:Arial,sans-serif}
+.login-box{width:min(360px,88vw);background:#fff;padding:28px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.18);text-align:center}
+.login-box h2{margin:0 0 20px;color:#222}
+.login-box input{width:100%;box-sizing:border-box;padding:12px;margin:7px 0;border:1px solid #ccc;border-radius:8px;font-size:16px}
+.login-box button{width:100%;padding:12px;margin-top:10px;border:0;border-radius:8px;background:#4CAF50;color:#fff;font-size:16px;cursor:pointer}
+#loginError{color:#d32f2f;min-height:20px;margin-top:10px;font-size:14px}
+#appContent{display:none}
+</style>
+</head>
+
+<body style="background-color: #cae6cd;">
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>Telecast Login</h2>
+    <input id="loginUser" type="text" placeholder="Login" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+    <button onclick="doLogin()">LOGIN</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+<div id="appContent">
+
+<center>
+<div style="margin-top: 10px;">
+  <img src="logo.png" alt="Logo" border="0" style="width: 200px; height: auto;">
+</div>
+
+<hr width="80%" style="border-color: #ccc;">
+
+<video id="v" width="640" height="360" controls></video>
+
+<br><br>
+
+Search Channel:<br>
+<input type="text" id="searchBox" placeholder="Type channel name..." 
+       style="width:300px;padding:5px;font-size:16px;border:1px solid #ccc;">
+<br>
+<select id="ch" size="5" style="width:320px;display:none;margin-top:5px;border:1px solid #ccc;">
+</select>
+
+<br>
+<input type="button" value="PLAY" onclick="playit()" style="font-size:16px;margin-top:5px;padding:5px 15px;background:#4CAF50;color:white;border:none;cursor:pointer;">
+
+<br><br>
+<span id="msg">Loading channels...</span>
+
+<hr width="80%" style="border-color: #ccc;">
+<medium>Made with ❤️ for Neelam</medium>
+</center>
+
+<script>
+var M3U = "https://iptv-org.github.io/iptv/countries/in.m3u";
+var video = document.getElementById('v');
+var sel = document.getElementById('ch');
+var searchBox = document.getElementById('searchBox');
+var msg = document.getElementById('msg');
+var hls = null;
+var allChannels = [];
+
+fetch(M3U)
+.then(r => r.text())
+.then(data => {
+  var lines = data.split('\n');
+  var name = '';
+  for(var i=0; i<lines.length; i++){
+    var line = lines[i].trim();
+    if(line.startsWith('#EXTINF')){
+      name = line.split(',').pop().trim();
+    } else if(line.startsWith('http') && name){
+      allChannels.push({
+        name: name,
+        url: line
+      });
+      name = '';
+    }
+  }
+  msg.innerHTML = 'Channels loaded: ' + allChannels.length + '. Type to search.';
+})
+.catch(e => {
+  msg.innerHTML = 'Error loading list.';
+});
+
+searchBox.addEventListener('input', function() {
+  var searchText = this.value.toLowerCase().trim();
+  var channelList = document.getElementById('ch');
+  
+  channelList.innerHTML = '';
+  
+  if (searchText.length < 2) {
+    channelList.style.display = 'none';
+    return;
+  }
+  
+  var filteredChannels = allChannels.filter(function(channel) {
+    return channel.name.toLowerCase().includes(searchText);
+  });
+  
+  filteredChannels.forEach(function(channel) {
+    var opt = document.createElement('option');
+    opt.value = channel.url;
+    opt.text = channel.name;
+    channelList.add(opt);
+  });
+  
+  if (filteredChannels.length > 0) {
+    channelList.style.display = 'block';
+    channelList.size = Math.min(filteredChannels.length, 8);
+  } else {
+    channelList.style.display = 'none';
+    msg.innerHTML = 'No channels found.';
+  }
+});
+
+sel.addEventListener('change', function() {
+  if (this.value) {
+    playit();
+  }
+});
+
+document.addEventListener('click', function(event) {
+  var channelList = document.getElementById('ch');
+  if (event.target !== searchBox && event.target !== channelList) {
+    channelList.style.display = 'none';
+  }
+});
+
+function playit(){
+  var url = sel.value;
+  var selectedOption = sel.options[sel.selectedIndex];
+  
+  if(!url || !selectedOption){
+    msg.innerHTML = 'Select a channel first.';
+    return;
+  }
+  
+  var name = selectedOption.text;
+  msg.innerHTML = 'Now playing: ' + name;
+  
+  sel.style.display = 'none';
+  
+  if(hls){ hls.destroy(); hls=null; }
+  video.pause();
+  video.src='';
+
+  if(Hls.isSupported()){
+    hls = new Hls();
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED,function(){ video.play(); });
+  } else if(video.canPlayType('application/vnd.apple.mpegurl')){
+    video.src = url;
+    video.play();
+  } else {
+    msg.innerHTML = 'Browser not supported.';
+  }
+}
+</script>
+</div>
+<script>
+function doLogin(){
+  const user=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const error=document.getElementById('loginError');
+  if(user==='Neelam' && pass==='Neelam143'){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appContent').style.display='block';
+    sessionStorage.setItem('telecast_logged_in','1');
+  }else{
+    error.textContent='Invalid Login or Password';
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  if(sessionStorage.getItem('telecast_logged_in')==='1'){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appContent').style.display='block';
+  }
+});
+</script>
+</body>
+</html>
